@@ -1,0 +1,14 @@
+{
+  "name": "test-caller",
+  "version": "1.0.0",
+  "description": "Scam call test harness for ScamStop",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "twilio": "^5.5.0"
+  }
+}

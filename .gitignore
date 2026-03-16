@@ -1,0 +1,29 @@
+# Environment / secrets
+.env
+*.env.local
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Recordings & test artifacts
+recordings/
+*.b64
+scam-test-image.png
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.apk
+
+# IDE
+.claude/
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

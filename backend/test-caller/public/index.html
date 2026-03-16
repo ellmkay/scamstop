@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScamStop — Test Caller</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #e84040;
+      --accent2: #ff6b35;
+      --green: #2ecc71;
+      --blue: #4a9eff;
+      --yellow: #f39c12;
+      --text: #e4e6f0;
+      --muted: #7a7f9a;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 20px 16px 48px;
+    }
+
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: 0.04em; }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--muted); font-size: 0.8rem; margin-top: 4px; }
+
+    /* WS status dot */
+    #ws-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--muted);
+      margin-right: 5px; vertical-align: middle;
+      transition: background 0.3s;
+    }
+    #ws-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+    .root {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 16px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    @media (max-width: 720px) { .root { grid-template-columns: 1fr; } }
+
+    /* ── Left panel ── */
+    .left { display: flex; flex-direction: column; gap: 12px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .card h2 {
+      font-size: 0.66rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 10px;
+    }
+
+    .number-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .number-btn {
+      background: var(--surface2); border: 2px solid var(--border);
+      border-radius: 7px; padding: 9px 6px; cursor: pointer; text-align: center;
+      transition: border-color .15s, background .15s;
+    }
+    .number-btn:hover { border-color: #444b6e; }
+    .number-btn.active { border-color: var(--accent); background: rgba(232,64,64,.08); }
+    .number-btn .label { font-size: 0.62rem; color: var(--muted); margin-bottom: 1px; }
+    .number-btn .num { font-size: 0.82rem; font-weight: 600; font-family: monospace; }
+
+    .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .type-btn {
+      background: var(--surface2); border: 2px solid var(--border);
+      border-radius: 7px; padding: 8px 3px; cursor: pointer; text-align: center;
+      transition: border-color .15s, background .15s;
+    }
+    .type-btn:hover { border-color: #444b6e; }
+    .type-btn.active { border-color: var(--accent2); background: rgba(255,107,53,.1); }
+    .type-btn .icon { font-size: 1.2rem; display: block; margin-bottom: 2px; }
+    .type-btn .name { font-size: 0.64rem; font-weight: 600; color: var(--muted); }
+    .type-btn.active .name { color: var(--accent2); }
+    .type-btn .vh { font-size: 0.56rem; color: var(--muted); margin-top: 1px; opacity: .65; }
+
+    .voice-toggle {
+      display: flex; background: var(--surface2);
+      border-radius: 7px; padding: 3px; border: 1px solid var(--border);
+    }
+    .voice-opt {
+      flex: 1; text-align: center; padding: 6px;
+      border-radius: 5px; cursor: pointer;
+      font-size: 0.78rem; font-weight: 600; color: var(--muted);
+      transition: all .15s;
+    }
+    .voice-opt.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+    #voice-note { font-size: 0.64rem; color: var(--muted); margin-top: 7px; text-align: center; }
+
+    .slider-row { margin-bottom: 14px; }
+    .slider-row:last-child { margin-bottom: 0; }
+    .slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+    .slider-header .name { font-size: 0.82rem; font-weight: 600; }
+    .slider-header .val { font-size: 0.68rem; color: var(--muted); }
+    .endpoints { display: flex; justify-content: space-between; font-size: 0.61rem; color: var(--muted); margin-top: 3px; }
+
+    input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 4px; border-radius: 2px;
+      background: var(--border); outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 15px; height: 15px;
+      border-radius: 50%; background: var(--accent); cursor: pointer;
+      box-shadow: 0 0 4px rgba(232,64,64,.4);
+    }
+    #severity-slider { background: linear-gradient(to right, #2ecc71, #f39c12, #e84040); }
+
+    .call-btn {
+      display: block; width: 100%;
+      padding: 14px; font-size: 0.95rem; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase;
+      background: var(--accent); color: #fff; border: none;
+      border-radius: var(--radius); cursor: pointer;
+      transition: background .15s, transform .1s, opacity .15s;
+    }
+    .call-btn:hover:not(:disabled) { background: #c93535; }
+    .call-btn:active:not(:disabled) { transform: scale(.98); }
+    .call-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Right panel: active call ── */
+    .right { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Call status bar */
+    #call-panel { display: none; }
+    #call-panel.visible { display: flex; flex-direction: column; gap: 12px; }
+
+    .status-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .status-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0; transition: background .3s, box-shadow .3s;
+      background: var(--muted);
+    }
+    .status-dot.ringing  { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); animation: pulse 1s infinite; }
+    .status-dot.active   { background: var(--green);  box-shadow: 0 0 8px var(--green); }
+    .status-dot.ended    { background: var(--muted); }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+    .status-info { flex: 1; }
+    .status-info .to   { font-size: 1rem; font-weight: 700; font-family: monospace; }
+    .status-info .meta { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+    .status-info .badge {
+      display: inline-block; margin-top: 4px;
+      padding: 2px 8px; border-radius: 4px; font-size: 0.68rem; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase;
+    }
+    .badge.ringing  { background: rgba(243,156,18,.15);  color: var(--yellow); border: 1px solid rgba(243,156,18,.3); }
+    .badge.active   { background: rgba(46,204,113,.12);  color: var(--green);  border: 1px solid rgba(46,204,113,.3); }
+    .badge.ended    { background: rgba(122,127,154,.1);  color: var(--muted);  border: 1px solid rgba(122,127,154,.2); }
+    .badge.failed   { background: rgba(232,64,64,.12);   color: var(--accent); border: 1px solid rgba(232,64,64,.2); }
+
+    .hangup-btn {
+      padding: 10px 20px; font-size: 0.82rem; font-weight: 700;
+      background: rgba(232,64,64,.15); color: var(--accent);
+      border: 1px solid rgba(232,64,64,.3); border-radius: 8px;
+      cursor: pointer; transition: background .15s;
+      white-space: nowrap;
+    }
+    .hangup-btn:hover { background: rgba(232,64,64,.3); }
+    .hangup-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+    /* Conversation log */
+    #conv-card { flex: 1; min-height: 300px; }
+    #conv {
+      height: 460px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 4px 2px 0;
+    }
+    #conv::-webkit-scrollbar { width: 4px; }
+    #conv::-webkit-scrollbar-track { background: transparent; }
+    #conv::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .msg {
+      padding: 9px 13px; border-radius: 10px;
+      font-size: 0.8rem; line-height: 1.55; max-width: 85%;
+      animation: fadeIn .2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    .msg-label { font-size: 0.61rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 3px; }
+
+    .msg.scammer {
+      background: rgba(232,64,64,.1); border: 1px solid rgba(232,64,64,.2);
+      color: #ffcaca; align-self: flex-start;
+    }
+    .msg.scammer .msg-label { color: var(--accent); }
+
+    .msg.target {
+      background: rgba(74,158,255,.1); border: 1px solid rgba(74,158,255,.2);
+      color: #c0deff; align-self: flex-end; text-align: right;
+    }
+    .msg.target .msg-label { color: var(--blue); }
+
+    .msg.system {
+      background: transparent; border: none;
+      color: var(--muted); font-size: 0.7rem; align-self: center;
+      text-align: center; font-style: italic; padding: 2px 0; max-width: 100%;
+    }
+
+    .msg.thinking {
+      background: rgba(122,127,154,.06); border: 1px dashed var(--border);
+      color: var(--muted); align-self: flex-start; font-style: italic;
+    }
+
+    /* No-call placeholder */
+    #no-call {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 40px;
+      color: var(--muted); font-size: 0.85rem; text-align: center;
+    }
+    #no-call.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>ScamStop <span>Test Caller</span></h1>
+  <p><span id="ws-dot"></span><span id="ws-label">Connecting…</span></p>
+</header>
+
+<div class="root">
+
+  <!-- ── Left: config ── -->
+  <div class="left">
+
+    <div class="card">
+      <h2>Target Number</h2>
+      <div class="number-grid">
+        <div class="number-btn" id="target-direct" data-number="" data-scamstop="false" onclick="selectNumber(this)">
+          <div class="label">Direct</div>
+          <div class="num">Loading…</div>
+        </div>
+        <div class="number-btn active" id="target-scamstop" data-number="" data-scamstop="true" onclick="selectNumber(this)">
+          <div class="label">+ ScamStop AI</div>
+          <div class="num">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>From Number</h2>
+      <input id="from-number" type="text" placeholder="+15*****9353 (default)"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;
+               padding:9px 12px;color:var(--text);font-size:0.82rem;font-family:monospace;outline:none;">
+      <div style="font-size:0.62rem;color:var(--muted);margin-top:6px;">Leave blank to use the default Twilio number. Must be a Twilio or verified number.</div>
+    </div>
+
+    <div class="card">
+      <h2>Scam Type</h2>
+      <div class="type-grid">
+        <div class="type-btn active" data-type="ssa" onclick="selectType(this)">
+          <span class="icon">🏛️</span><span class="name">Gov / SSA</span>
+          <span class="vh">Matthew / Joanna ★</span>
+        </div>
+        <div class="type-btn" data-type="irs" onclick="selectType(this)">
+          <span class="icon">🧾</span><span class="name">IRS / Tax</span>
+          <span class="vh">Matthew / Salli ★</span>
+        </div>
+        <div class="type-btn" data-type="tech" onclick="selectType(this)">
+          <span class="icon">💻</span><span class="name">Tech Support</span>
+          <span class="vh">Brian / Amy UK ★</span>
+        </div>
+        <div class="type-btn" data-type="lottery" onclick="selectType(this)">
+          <span class="icon">🎰</span><span class="name">Lottery</span>
+          <span class="vh">Joey / Kendra ★</span>
+        </div>
+        <div class="type-btn" data-type="bank" onclick="selectType(this)">
+          <span class="icon">🏦</span><span class="name">Bank Fraud</span>
+          <span class="vh">Stephen / Joanna ★</span>
+        </div>
+        <div class="type-btn" data-type="grandparent" onclick="selectType(this)">
+          <span class="icon">👴</span><span class="name">Grandparent</span>
+          <span class="vh">Kevin / Ivy ★</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Caller Voice</h2>
+      <div class="voice-toggle">
+        <div class="voice-opt active" data-voice="male" onclick="selectVoice(this)">👨 Male</div>
+        <div class="voice-opt" data-voice="female" onclick="selectVoice(this)">👩 Female</div>
+      </div>
+      <div id="voice-note">Polly.Matthew (US, authoritative)</div>
+    </div>
+
+    <div class="card">
+      <h2>Parameters</h2>
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="name">Severity</span>
+          <span class="val" id="severity-val">Moderate (3)</span>
+        </div>
+        <input type="range" id="severity-slider" min="1" max="5" value="3"
+          oninput="updateSlider('severity',this.value)">
+        <div class="endpoints"><span>Innocent</span><span>Extreme</span></div>
+      </div>
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="name">Urgency</span>
+          <span class="val" id="urgency-val">Moderate (3)</span>
+        </div>
+        <input type="range" id="urgency-slider" min="1" max="5" value="3"
+          oninput="updateSlider('urgency',this.value)">
+        <div class="endpoints"><span>Calm</span><span>Frantic</span></div>
+      </div>
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="name">Max Turns</span>
+          <span class="val" id="maxTurns-val">8 exchanges</span>
+        </div>
+        <input type="range" id="maxTurns-slider" min="2" max="16" value="8"
+          oninput="updateSlider('maxTurns',this.value)">
+        <div class="endpoints"><span>Quick (2)</span><span>Extended (16)</span></div>
+      </div>
+    </div>
+
+    <div class="card" id="preview-card">
+      <h2>Script Preview</h2>
+      <div id="preview-opener" style="font-size:.82rem;color:#e4e6f0;margin-bottom:10px;line-height:1.5;font-style:italic;"></div>
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">LLM will improvise based on responses:</div>
+      <div id="preview-outline" style="font-size:.76rem;color:var(--muted);line-height:1.7;"></div>
+    </div>
+
+    <div id="scamstop-badge" style="text-align:center;font-size:0.72rem;font-weight:700;letter-spacing:.06em;color:var(--green);margin-bottom:6px;display:block;">🛡️ ScamStop AI monitoring enabled</div>
+    <button class="call-btn" id="call-btn" onclick="placeCall()">📞 Place Test Call</button>
+
+  </div>
+
+  <!-- ── Right: live call ── -->
+  <div class="right">
+
+    <!-- Active call panel -->
+    <div id="call-panel">
+
+      <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <div class="status-info">
+          <div class="to" id="call-to">—</div>
+          <div class="meta" id="call-meta">—</div>
+          <span class="badge" id="call-badge">—</span>
+        </div>
+        <button class="hangup-btn" id="hangup-btn" onclick="hangUp()" disabled>
+          ✂️ Hang Up
+        </button>
+      </div>
+
+      <div id="recording-player" style="display:none;margin:0 0 12px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;">🎙 Call Recording</div>
+        <audio id="recording-audio" controls style="width:100%;height:32px;"></audio>
+      </div>
+
+      <div class="card" id="conv-card">
+        <h2>Live Conversation</h2>
+        <div id="conv"></div>
+      </div>
+
+    </div>
+
+    <!-- Placeholder when no call -->
+    <div id="no-call">
+      <div>
+        <div style="font-size:2rem;margin-bottom:8px">📵</div>
+        No active call — configure and place a test call to begin.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── Helpers ────────────────────────────────────────────────────────────
+  function anonPhone(p) {
+    if (!p || p.length < 6) return p || '';
+    const raw = p.replace(/[\s\-()]/g, '');
+    return raw.slice(0, 3) + '*****' + raw.slice(-4);
+  }
+
+  // ── State ──────────────────────────────────────────────────────────────
+  const VOICE_NOTES = {
+    ssa:         { male: 'Matthew Neural (US, authoritative)', female: 'Joanna Neural (US, professional)' },
+    irs:         { male: 'Matthew Neural (US, stern)',         female: 'Salli Neural (US, firm)' },
+    tech:        { male: 'Brian Neural (UK, technical)',       female: 'Amy Neural (UK, helpful)' },
+    lottery:     { male: 'Joey Neural (US, enthusiastic)',     female: 'Kendra Neural (US, friendly)' },
+    bank:        { male: 'Stephen Neural (US, authoritative)', female: 'Joanna Neural (US, concerned)' },
+    grandparent: { male: 'Kevin Neural (US, young male)',      female: 'Ivy Neural (US, young female)' },
+  };
+  const SEV_LABELS = ['Innocent (1)','Mild (2)','Moderate (3)','Severe (4)','Extreme (5)'];
+  const URG_LABELS = ['Calm (1)','Low (2)','Moderate (3)','High (4)','Frantic (5)'];
+
+  let selectedNumber = '';
+  let selectedScamstop = true;
+  let selectedType   = 'ssa';
+  let selectedVoice    = 'male';
+  let activeCallSid    = null;
+  let thinkingEl       = null;
+
+  function selectNumber(el) {
+    document.querySelectorAll('.number-btn').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    selectedNumber = el.dataset.number;
+    selectedScamstop = el.dataset.scamstop === 'true';
+    document.getElementById('scamstop-badge').style.display = selectedScamstop ? 'block' : 'none';
+  }
+  function selectType(el) {
+    document.querySelectorAll('.type-btn').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    selectedType = el.dataset.type;
+    updateVoiceNote();
+    updatePreview();
+  }
+  function selectVoice(el) {
+    document.querySelectorAll('.voice-opt').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    selectedVoice = el.dataset.voice;
+    updateVoiceNote();
+    updatePreview();
+  }
+  function updateVoiceNote() {
+    const n = VOICE_NOTES[selectedType] || VOICE_NOTES.ssa;
+    document.getElementById('voice-note').textContent = n[selectedVoice] || '';
+  }
+  function updateSlider(name, v) {
+    const i = parseInt(v, 10);
+    if (name === 'severity') document.getElementById('severity-val').textContent = SEV_LABELS[i-1];
+    else if (name === 'urgency') document.getElementById('urgency-val').textContent = URG_LABELS[i-1];
+    else if (name === 'maxTurns') document.getElementById('maxTurns-val').textContent = `${i} exchanges`;
+  }
+
+  // ── Call UI ────────────────────────────────────────────────────────────
+  function showCallPanel(show) {
+    document.getElementById('call-panel').classList.toggle('visible', show);
+    document.getElementById('no-call').classList.toggle('hidden', show);
+  }
+
+  function setCallStatus(status) {
+    const dot   = document.getElementById('status-dot');
+    const badge = document.getElementById('call-badge');
+    const hang  = document.getElementById('hangup-btn');
+
+    dot.className = 'status-dot';
+    badge.className = 'badge';
+
+    if (status === 'ringing' || status === 'initiated') {
+      dot.classList.add('ringing');
+      badge.classList.add('ringing');
+      badge.textContent = '📳 Ringing…';
+      hang.disabled = false;
+    } else if (status === 'in-progress' || status === 'answered') {
+      dot.classList.add('active');
+      badge.classList.add('active');
+      badge.textContent = '🟢 In Progress';
+      hang.disabled = false;
+    } else {
+      dot.classList.add('ended');
+      badge.classList.add(status === 'failed' ? 'failed' : 'ended');
+      const labels = { completed: '⬛ Ended', 'no-answer': '📵 No Answer', busy: '📵 Busy', failed: '❌ Failed', canceled: '⬛ Canceled' };
+      badge.textContent = labels[status] || status;
+      hang.disabled = true;
+      activeCallSid = null;
+    }
+  }
+
+  function addMsg(role, text) {
+    removeThinking();
+    const conv = document.getElementById('conv');
+
+    const wrap = document.createElement('div');
+    wrap.className = `msg ${role}`;
+
+    if (role === 'system') {
+      wrap.textContent = text;
+    } else {
+      const label = document.createElement('div');
+      label.className = 'msg-label';
+      label.textContent = role === 'scammer' ? '🎭 Scammer' : '📞 Target';
+      wrap.appendChild(label);
+      const body = document.createElement('div');
+      body.textContent = text;
+      wrap.appendChild(body);
+    }
+
+    conv.appendChild(wrap);
+    conv.scrollTop = conv.scrollHeight;
+  }
+
+  function showThinking() {
+    removeThinking();
+    const conv = document.getElementById('conv');
+    thinkingEl = document.createElement('div');
+    thinkingEl.className = 'msg thinking';
+    thinkingEl.textContent = '⏳ Nova generating scammer response…';
+    conv.appendChild(thinkingEl);
+    conv.scrollTop = conv.scrollHeight;
+  }
+
+  function removeThinking() {
+    if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+  }
+
+  // ── WebSocket ──────────────────────────────────────────────────────────
+  let ws;
+  function connectWs() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const base = location.pathname.replace(/\/[^/]*$/, '').replace(/\/$/, '');
+    ws = new WebSocket(`${proto}://${location.host}${base}/ws`);
+
+    ws.onopen = () => {
+      document.getElementById('ws-dot').classList.add('connected');
+      document.getElementById('ws-label').textContent = 'Live';
+    };
+    ws.onclose = () => {
+      document.getElementById('ws-dot').classList.remove('connected');
+      document.getElementById('ws-label').textContent = 'Reconnecting…';
+      setTimeout(connectWs, 2000);
+    };
+    ws.onmessage = (e) => {
+      let msg;
+      try { msg = JSON.parse(e.data); } catch { return; }
+      handleWsMsg(msg);
+    };
+  }
+
+  function handleWsMsg(msg) {
+    switch (msg.type) {
+
+      case 'init':
+        // Restore active call if any (e.g. after page reload)
+        if (msg.calls && msg.calls.length > 0) {
+          const call = msg.calls[msg.calls.length - 1];
+          activeCallSid = call.callSid;
+          showCallPanel(true);
+          document.getElementById('call-to').textContent = anonPhone(call.to);
+          document.getElementById('call-meta').textContent =
+            `${call.scamType.toUpperCase()} · Severity ${call.severity} · Urgency ${call.urgency}`;
+          setCallStatus(call.status);
+          // Replay log
+          const conv = document.getElementById('conv');
+          conv.innerHTML = '';
+          for (const entry of (call.log || [])) {
+            addMsg(entry.role, entry.text);
+          }
+        }
+        break;
+
+      case 'call_started':
+        activeCallSid = msg.callSid;
+        showCallPanel(true);
+        document.getElementById('call-to').textContent = anonPhone(msg.to);
+        document.getElementById('call-meta').textContent =
+          `${msg.scamType.toUpperCase()} · Severity ${msg.severity} · Urgency ${msg.urgency}`;
+        document.getElementById('conv').innerHTML = '';
+        setCallStatus('ringing');
+        addMsg('system', `Call initiated → ${anonPhone(msg.to)}`);
+        break;
+
+      case 'call_answered':
+        if (msg.callSid !== activeCallSid) break;
+        setCallStatus('in-progress');
+        break;
+
+      case 'call_status':
+        if (msg.callSid !== activeCallSid && activeCallSid !== null) break;
+        setCallStatus(msg.status);
+        if (['completed','busy','no-answer','failed','canceled'].includes(msg.status)) {
+          addMsg('system', `Call ended — ${msg.status}`);
+          addMsg('system', '⏳ Recording processing…');
+        }
+        break;
+
+      case 'recording_ready':
+        if (msg.callSid !== activeCallSid) break;
+        { const player = document.getElementById('recording-player');
+          const audio  = document.getElementById('recording-audio');
+          audio.src = `recordings/${msg.filename}`;
+          player.style.display = 'block';
+          // Remove the "processing" message
+          const msgs = document.querySelectorAll('#conv .msg-system');
+          msgs.forEach(el => { if (el.textContent.includes('Recording processing')) el.remove(); });
+          addMsg('system', `🎙 Recording ready (${msg.duration}s)`); }
+        break;
+
+      case 'turn':
+        if (msg.callSid !== activeCallSid) break;
+        if (msg.role === 'target') showThinking(); // brief moment before scammer reply arrives
+        else removeThinking();
+        addMsg(msg.role, msg.text);
+        break;
+    }
+  }
+
+  // ── Actions ────────────────────────────────────────────────────────────
+  async function placeCall() {
+    const btn = document.getElementById('call-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Dialling…';
+
+    try {
+      const res = await fetch('api/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to:        selectedNumber,
+          from:      document.getElementById('from-number').value.trim() || undefined,
+          scamType:  selectedType,
+          severity:  parseInt(document.getElementById('severity-slider').value, 10),
+          urgency:   parseInt(document.getElementById('urgency-slider').value, 10),
+          maxTurns:  parseInt(document.getElementById('maxTurns-slider').value, 10),
+          voicePref: selectedVoice,
+          scamstop:  selectedScamstop,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) alert('Error: ' + data.error);
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = '📞 Place Test Call';
+  }
+
+  async function hangUp() {
+    if (!activeCallSid) return;
+    const btn = document.getElementById('hangup-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Hanging up…';
+    try {
+      await fetch(`api/hangup/${encodeURIComponent(activeCallSid)}`, { method: 'POST' });
+    } catch (err) {
+      alert('Hangup failed: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = '✂️ Hang Up';
+    }
+  }
+
+  // ── Script preview ─────────────────────────────────────────────────────
+  const OPENERS = {
+    ssa:         { male: `"Hello, this is Officer Williams from the Social Security Administration. Am I speaking with the account holder?"`,
+                   female: `"Hello, this is Officer Chen from the Social Security Administration. Am I speaking with the account holder?"` },
+    irs:         { male: `"Hello, Agent Davis from the IRS. I'm calling about an urgent matter on your tax account."`,
+                   female: `"Hello, Agent Moore from the IRS. I'm calling about an urgent matter on your tax account."` },
+    tech:        { male: `"Hello, James calling from Microsoft Support. We're seeing critical alerts from your device. Are you near your computer?"`,
+                   female: `"Hello, Claire calling from Microsoft Support. We're seeing critical alerts from your device. Are you near your computer?"` },
+    lottery:     { male: `"Hello! John here from the National Prize Bureau — congratulations! Am I speaking with the winner?"`,
+                   female: `"Hello! Michelle here from the National Prize Bureau — congratulations! Am I speaking with the winner?"` },
+    bank:        { male: `"Hello, Mark calling from your bank's fraud team. We need to verify something on your account urgently."`,
+                   female: `"Hello, Sarah calling from your bank's fraud team. We need to verify something on your account urgently."` },
+    grandparent: { male: `"Hello? It's me. I'm so sorry to call like this — I'm in a bit of trouble."`,
+                   female: `"Hello? It's me. I'm so sorry to call like this — something happened."` },
+  };
+
+  const OUTLINES = {
+    ssa: [
+      // severity 1-5
+      `• Establish SSA identity, ask to verify name/address\n• Mention a routine account review\n• No pressure — politely request a callback if needed`,
+      `• Claim unusual login activity on their SSN record\n• Ask them to confirm personal details to "protect the account"\n• Suggest calling back if they seem uncertain`,
+      `• Inform them their SSN has been temporarily suspended\n• Create urgency around restoring benefits\n• Pressure for identity verification (name, DOB, SSN)`,
+      `• Claim SSN is linked to criminal activity (money laundering)\n• Warn of imminent federal charges and asset seizure\n• Push for immediate action — personal info or payment`,
+      `• Arrest warrant has been issued, officers en route\n• Only way to stop it: transfer savings or buy gift cards now\n• Extreme pressure, no time to think, no lawyers`,
+    ],
+    irs: [
+      `• Introduce as IRS agent for a routine account check\n• Ask to verify identity with basic info\n• No threat — just "making sure records are current"`,
+      `• Mention an outstanding balance from a previous year\n• Suggest settling to avoid interest accumulating\n• Offer a "payment plan" — push for bank details`,
+      `• Tax lien threat on their property\n• Demand callback to resolve before enforcement\n• Request payment via wire transfer or prepaid card`,
+      `• Criminal investigation for tax fraud\n• Federal levy approved — accounts will be frozen\n• Must pay immediately to avoid prosecution`,
+      `• Arrest warrant signed by federal judge, police en route\n• Pay with prepaid cards in next 5 minutes or be arrested\n• Forbid contacting a lawyer`,
+    ],
+    tech: [
+      `• Inform about a routine Windows security update\n• Offer to "walk through" settings remotely\n• Collect name, email — no money asked yet`,
+      `• Claim malware detected on their home network\n• Ask to download a "security tool" for a free scan\n• Build trust before asking for anything`,
+      `• Virus has stolen banking info\n• Request remote access to "clean" the device\n• Charge a one-time "protection fee"`,
+      `• Hackers are live on their webcam and banking portal\n• Internet will be cut in 30 min without paying a fee\n• Urgently push for remote access + payment`,
+      `• Computer locked, illegal content detected\n• Data deleted in 10 minutes unless they buy a voucher\n• Demand voucher code — final warning`,
+    ],
+    lottery: [
+      `• Congratulations call — they've been randomly selected\n• Ask for name confirmation and mailing address\n• No money asked — "just need to verify your entry"`,
+      `• Claim they've won $1,000 in a loyalty reward\n• Need to verify identity before releasing prize\n• Request DOB and last 4 of SSN "for security"`,
+      `• $50,000 prize — car included\n• Processing fee of $200 required to release funds\n• Push for gift card or wire payment`,
+      `• $250,000 international prize ready to wire today\n• "Government tax clearance fee" of $500 needed first\n• Fabricate official documents, urgency deadline`,
+      `• $1,000,000 — last chance, deadline today\n• Need bank account details + $1,000 upfront fee\n• If they hesitate, prize is legally forfeited tonight`,
+    ],
+    bank: [
+      `• Routine security check, no alarm\n• Ask to confirm last 4 of card and recent transactions\n• Sound helpful and calm`,
+      `• Unusual login attempt detected\n• Recommend "verifying" account details to lock it down\n• Collect account number`,
+      `• Three suspicious charges in foreign city\n• Card may be compromised — push for full card details\n• Offer to "cancel and reissue" the card`,
+      `• Large unauthorized transfers happening right now\n• Must verify PIN and security answers to stop them\n• Create panic — every second costs money`,
+      `• Account frozen, $20k sent to foreign accounts\n• Buy $1,000 in prepaid cards to "verify identity"\n• Police involved — immediate action required`,
+    ],
+    grandparent: [
+      `• Call from "a friend" asking for a small favour\n• Nothing financial yet — just establish trust\n• Keep it vague and warm`,
+      `• Grandchild lost wallet while travelling\n• Just needs $200 wired — "too embarrassed to tell parents"\n• Play on sympathy, ask them not to tell family`,
+      `• Minor car accident, needs $500 for legal fees\n• "Please don't tell mom and dad"\n• Request wire transfer or gift cards`,
+      `• Arrested — needs $2,000 bail by end of day\n• Lawyer needs gift cards immediately\n• Stressed, scared tone — isolation tactic`,
+      `• In hospital AND arrested — $5,000 needed for bail\n• Risk of deportation\n• Maximum emotional pressure — "you're my only hope"`,
+    ],
+  };
+
+  function updatePreview() {
+    const severity = parseInt(document.getElementById('severity-slider').value, 10);
+    const opener   = (OPENERS[selectedType] || OPENERS.ssa)[selectedVoice] || '';
+    const outline  = (OUTLINES[selectedType] || [])[severity - 1] || '';
+
+    document.getElementById('preview-opener').textContent = opener;
+    document.getElementById('preview-outline').innerHTML = outline
+      .split('\n')
+      .map(l => `<div>${l}</div>`)
+      .join('');
+  }
+
+  document.getElementById('severity-slider').addEventListener('input', updatePreview);
+
+  // ── Init ───────────────────────────────────────────────────────────────
+  async function loadConfig() {
+    try {
+      const res = await fetch('api/config');
+      const cfg = await res.json();
+      const num = cfg.targetNumber || '';
+      selectedNumber = num;
+      const d = document.getElementById('target-direct');
+      const s = document.getElementById('target-scamstop');
+      if (d) { d.dataset.number = num; d.querySelector('.num').textContent = anonPhone(num); }
+      if (s) { s.dataset.number = num; s.querySelector('.num').textContent = anonPhone(num); }
+    } catch (e) { console.warn('Failed to load config:', e); }
+  }
+
+  connectWs();
+  showCallPanel(false);
+  updateVoiceNote();
+  updatePreview();
+  loadConfig();
+</script>
+
+</body>
+</html>

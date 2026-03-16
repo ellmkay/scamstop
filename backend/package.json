@@ -1,0 +1,19 @@
+{
+  "name": "scamstop",
+  "version": "1.0.0",
+  "description": "AI-powered scam call protection for the elderly using Amazon Nova",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.1005.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.990.0",
+    "@aws-sdk/credential-providers": "^3.991.0",
+    "@smithy/node-http-handler": "^4.0.0",
+    "dotenv": "^16.4.0",
+    "twilio": "^5.5.0",
+    "ws": "^8.19.0"
+  }
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ScamStop</string>
+    <string name="notification_channel_calls">Call Screening</string>
+    <string name="notification_channel_sms">SMS Screening</string>
+</resources>
